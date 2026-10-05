@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#08111f" />
+  <title>VN Landslide AI Monitor</title>
+  <meta name="description" content="Bản đồ giám sát thời tiết, lượng mưa, địa hình và ước tính nguy cơ sạt lở tại Việt Nam." />
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIINfQ3ynsMZLZz9+I1iPAt1PvLbzK0+8uM=" crossorigin="" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div>
+          <h1>VN Landslide AI Monitor</h1>
+          <p>Thời tiết • Lượng mưa • Địa hình • Nguy cơ sạt lở</p>
+        </div>
+      </div>
+      <div class="live-pill"><span class="dot"></span>Dữ liệu trực tuyến</div>
+    </header>
+
+    <section class="hero-panel">
+      <div>
+        <span class="eyebrow">HỆ THỐNG HỖ TRỢ GIÁM SÁT THIÊN TAI</span>
+        <h2>Tra cứu nhanh nguy cơ sạt lở theo khu vực tại Việt Nam</h2>
+        <p>Chọn tỉnh/thành hoặc tìm địa điểm. Hệ thống tự động lấy dữ liệu mưa, thời tiết, độ ẩm đất và địa hình để tính điểm nguy cơ tham khảo.</p>
+      </div>
+      <div class="hero-alert">⚠ Mô hình AI thử nghiệm, không thay thế cảnh báo chính thức của cơ quan chức năng.</div>
+    </section>
+
+    <section class="search-panel card">
+      <div class="field grow">
+        <label for="provinceSearch">Tìm tỉnh/thành</label>
+        <div class="input-wrap">
+          <span>⌕</span>
+          <input id="provinceSearch" list="provinceList" placeholder="Ví dụ: Lào Cai, Sơn La, Đà Nẵng..." autocomplete="off" />
+          <datalist id="provinceList"></datalist>
+        </div>
+      </div>
+      <div class="field">
+        <label for="provinceSelect">Chọn nhanh</label>
+        <select id="provinceSelect"></select>
+      </div>
+      <div class="field">
+        <label for="mapLayer">Lớp bản đồ</label>
+        <select id="mapLayer">
+          <option value="topo">Địa hình</option>
+          <option value="osm">Đường phố</option>
+        </select>
+      </div>
+      <button id="analyzeBtn" class="primary-btn">Phân tích khu vực</button>
+    </section>
+
+    <main class="dashboard-grid">
+      <section class="map-card card">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">BẢN ĐỒ</span>
+            <h3 id="locationTitle">Việt Nam</h3>
+          </div>
+          <div id="coordsBadge" class="mini-badge">--</div>
+        </div>
+        <div id="map"></div>
+        <div class="map-footer">
+          <span>Nhấp vào bản đồ để phân tích một điểm bất kỳ.</span>
+          <span id="updatedAt">Chưa cập nhật</span>
+        </div>
+      </section>
+
+      <aside class="risk-card card">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">AI RISK ENGINE</span>
+            <h3>Nguy cơ sạt lở</h3>
+          </div>
+          <span id="riskLevel" class="risk-label neutral">Chưa có dữ liệu</span>
+        </div>
+
+        <div class="risk-gauge-wrap">
+          <div class="risk-gauge" id="riskGauge">
+            <div class="risk-gauge-inner">
+              <strong id="riskScore">--</strong>
+              <small>/100</small>
+            </div>
+          </div>
+        </div>
+
+        <p id="riskSummary" class="risk-summary">Chọn một khu vực để hệ thống đánh giá.</p>
+
+        <div class="factor-list">
+          <div class="factor"><div><span>Mưa 24 giờ gần nhất</span><strong id="rain24">--</strong></div><div class="bar"><i id="rain24Bar"></i></div></div>
+          <div class="factor"><div><span>Mưa 72 giờ gần nhất</span><strong id="rain72">--</strong></div><div class="bar"><i id="rain72Bar"></i></div></div>
+          <div class="factor"><div><span>Cường độ mưa cực đại</span><strong id="maxRain">--</strong></div><div class="bar"><i id="maxRainBar"></i></div></div>
+          <div class="factor"><div><span>Độ ẩm đất bề mặt</span><strong id="soilMoisture">--</strong></div><div class="bar"><i id="soilBar"></i></div></div>
+          <div class="factor"><div><span>Độ dốc địa hình ước tính</span><strong id="slope">--</strong></div><div class="bar"><i id="slopeBar"></i></div></div>
+        </div>
+      </aside>
+
+      <section class="metrics-card card span-2">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">ĐIỀU KIỆN HIỆN TẠI</span>
+            <h3>Thời tiết & địa hình</h3>
+          </div>
+          <span id="weatherText" class="mini-badge">--</span>
+        </div>
+        <div class="metric-grid">
+          <article class="metric"><span>🌡</span><div><small>Nhiệt độ</small><strong id="temperature">--</strong></div></article>
+          <article class="metric"><span>💧</span><div><small>Độ ẩm không khí</small><strong id="humidity">--</strong></div></article>
+          <article class="metric"><span>🌧</span><div><small>Mưa hiện tại</small><strong id="currentRain">--</strong></div></article>
+          <article class="metric"><span>💨</span><div><small>Gió</small><strong id="wind">--</strong></div></article>
+          <article class="metric"><span>⛰</span><div><small>Độ cao</small><strong id="elevation">--</strong></div></article>
+          <article class="metric"><span>📐</span><div><small>Độ dốc ước tính</small><strong id="slopeMetric">--</strong></div></article>
+        </div>
+      </section>
+
+      <section class="chart-card card span-2">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">DỰ BÁO 7 NGÀY</span>
+            <h3>Lượng mưa dự báo</h3>
+          </div>
+          <div class="legend"><span class="legend-dot"></span> Tổng lượng mưa/ngày</div>
+        </div>
+        <div class="chart-wrap"><canvas id="rainChart"></canvas></div>
+      </section>
+
+      <section class="forecast-card card span-2">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">DỰ BÁO NGẮN HẠN</span>
+            <h3>Diễn biến nguy cơ</h3>
+          </div>
+        </div>
+        <div id="forecastStrip" class="forecast-strip"></div>
+      </section>
+
+      <section class="explain-card card span-2">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">GIẢI THÍCH MÔ HÌNH</span>
+            <h3>Vì sao hệ thống đưa ra mức nguy cơ này?</h3>
+          </div>
+        </div>
+        <div id="explainText" class="explain-text">Hệ thống sử dụng chấm điểm đa biến từ mưa 24 giờ, mưa 72 giờ, cường độ mưa, độ ẩm đất và độ dốc địa hình. Đây là mô hình thử nghiệm phục vụ nghiên cứu/đồ án.</div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Dữ liệu thời tiết & DEM: Open-Meteo / Copernicus DEM. Bản đồ: OpenStreetMap / OpenTopoMap.</span>
+      <span>Phiên bản demo nghiên cứu — 2026</span>
+    </footer>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden"><div class="spinner"></div><p>Đang tải dữ liệu và phân tích nguy cơ...</p></div>
+  <div id="toast" class="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
